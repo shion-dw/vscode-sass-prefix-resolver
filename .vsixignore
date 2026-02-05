@@ -1,0 +1,17 @@
+.vscode/**
+.vscode-test/**
+src/**
+test/**
+node_modules/**
+.gitignore
+.yarnrc
+tsconfig.json
+tslint.json
+.eslintrc.json
+**/*.ts
+**/*.map
+.github/**
+.claude/**
+.serena/**
+*.vsix
+**/.DS_Store

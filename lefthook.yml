@@ -1,0 +1,9 @@
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob: "*.{ts}"
+      run: yarn biome check --write --no-errors-on-unmatched --files-ignore-unknown=true --staged {staged_files}
+    typecheck:
+      glob: "*.{ts}"
+      run: yarn compile

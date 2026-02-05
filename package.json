@@ -1,0 +1,73 @@
+{
+  "name": "vscode-sass-prefix-resolver",
+  "displayName": "Sass Prefix Resolver",
+  "description": "Resolves @forward prefix transformations for accurate navigation",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shion-dw/vscode-sass-prefix-resolver.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:scss",
+    "onLanguage:sass"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Sass Prefix Resolver",
+      "properties": {
+        "sassPrefixResolver.includePaths": {
+          "type": "array",
+          "default": [],
+          "description": "追加のSassインクルードパス"
+        },
+        "sassPrefixResolver.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "デバッグログの出力レベル"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "yarn compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "yarn compile",
+    "test": "node ./out/test/runTest.js",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "check": "biome check . && tsc --noEmit",
+    "package": "vsce package --yarn --no-dependencies"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.0",
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^2.3.0",
+    "@vscode/vsce": "^3.7.1",
+    "lefthook": "^1.10.1",
+    "mocha": "^10.2.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "glob": "^10.3.0",
+    "minimatch": "^9.0.0",
+    "sass": "^1.70.0"
+  }
+}

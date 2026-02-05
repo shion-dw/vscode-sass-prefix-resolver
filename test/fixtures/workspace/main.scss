@@ -1,0 +1,14 @@
+@use "@test-pkg/styles";
+
+.container {
+  // styles.list-reset にカーソルを合わせて F12 を押すとジャンプできるはず
+  @include styles.list-reset;
+
+  // 変数のテスト: styles.$color-primary にカーソルを合わせて F12 を押す
+  color: styles.$color-primary;
+  border: 1px solid styles.$color-mono6;
+}
+
+.button {
+  @include styles.button-primary;
+}

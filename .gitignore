@@ -1,0 +1,15 @@
+.claude
+.serena
+out
+node_modules
+.vscode-test/
+*.vsix
+.DS_Store
+package-lock.json
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
