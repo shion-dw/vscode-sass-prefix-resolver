@@ -7,9 +7,9 @@ import { logger } from "../utils/logger";
 export class SassParser {
   /**
    * mixin定義を検索する正規表現
-   * 例: @mixin reset() { ... }
+   * 例: @mixin reset() { ... } または @mixin reset { ... }
    */
-  private readonly MIXIN_PATTERN = /@mixin\s+([\w-]+)\s*\(/g;
+  private readonly MIXIN_PATTERN = /@mixin\s+([\w-]+)(?:\s*\(|\s*\{)/g;
 
   /**
    * 変数定義を検索する正規表現
