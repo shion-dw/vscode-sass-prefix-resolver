@@ -1,4 +1,4 @@
-# Sass Prefix Resolver
+# vscode-sass-prefix-resolver
 
 VSCode拡張機能で、Sass/SCSSの@forward prefix付き転送を解決し、正確な定義へのジャンプを提供します。既存のSass拡張機能が対応していないprefix変換に特化した補完ツールです。
 
