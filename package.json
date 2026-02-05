@@ -2,7 +2,7 @@
   "name": "vscode-sass-prefix-resolver",
   "displayName": "Sass Prefix Resolver",
   "description": "Resolves @forward prefix transformations for accurate navigation",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "license": "MIT",
   "repository": {
     "type": "git",
