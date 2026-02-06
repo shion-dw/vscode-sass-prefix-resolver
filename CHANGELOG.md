@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/shion-dw/vscode-sass-prefix-resolver/compare/v1.0.0...v1.1.0) (2026-02-06)
+
+
+### Features
+
+* **ci:** リリース時にvsixファイルを自動生成・公開 ([f21147d](https://github.com/shion-dw/vscode-sass-prefix-resolver/commit/f21147dedf96249efc051bfb47c5abbf19033e09))
+
 # 1.0.0 (2026-02-05)
 
 
