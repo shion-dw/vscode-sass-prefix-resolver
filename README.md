@@ -22,7 +22,29 @@ VSCode拡張機能で、Sass/SCSSの@forward prefix付き転送を解決し、�
 
 ## インストール
 
+### GitHubのReleasesから（推奨）
+
+1. [Releases](https://github.com/shion-dw/vscode-sass-prefix-resolver/releases)ページから最新の`.vsix`ファイルをダウンロード
+2. 以下のいずれかの方法でインストール
+
+#### VSIXファイルのインストール方法
+
+**方法1: VSCodeの拡張機能ビューから**
+
+1. VSCodeを開く
+2. 拡張機能ビュー（Ctrl+Shift+X / Cmd+Shift+X）を開く
+3. 右上の`...`メニューから「VSIXからのインストール...」を選択
+4. 生成された`.vsix`ファイルを選択
+
+**方法2: コマンドラインから**
+
+```bash
+code --install-extension vscode-sass-prefix-resolver-X.X.X.vsix
+```
+
 ### ソースからビルド
+
+開発版をビルドする場合:
 
 ```bash
 # リポジトリをクローン
@@ -39,22 +61,7 @@ yarn compile
 yarn package
 ```
 
-生成された`vscode-sass-prefix-resolver-X.X.X.vsix`ファイルをVSCodeにインストールします。
-
-#### VSIXファイルのインストール方法
-
-**方法1: VSCodeの拡張機能ビューから**
-
-1. VSCodeを開く
-2. 拡張機能ビュー（Ctrl+Shift+X / Cmd+Shift+X）を開く
-3. 右上の`...`メニューから「VSIXからのインストール...」を選択
-4. 生成された`.vsix`ファイルを選択
-
-**方法2: コマンドラインから**
-
-```bash
-code --install-extension vscode-sass-prefix-resolver-X.X.X.vsix
-```
+生成された`vscode-sass-prefix-resolver-X.X.X.vsix`ファイルを上記の方法でVSCodeにインストールします。
 
 ## 使い方
 
