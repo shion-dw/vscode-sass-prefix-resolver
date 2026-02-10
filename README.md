@@ -15,6 +15,7 @@ VSCode拡張機能で、Sass/SCSSの@forward prefix付き転送を解決し、�
 
 - `@use` で読み込んだモジュールのmixin定義へのジャンプ
 - `@use` で読み込んだモジュールの変数定義へのジャンプ
+- ミックスイン呼び出し時の引数から、定義の引数宣言へのジャンプ
 - `@forward` のprefix付き転送に対応（例: `as list-*`, `as color-*`）
 - node_modules 内のパッケージに対応
 - 再帰的な `@forward` 転送に対応
@@ -81,6 +82,27 @@ yarn package
 .container {
   // "list-reset" にカーソルを合わせて F12 を押す
   @include styles.list-reset;
+}
+```
+
+### mixin引数定義へのジャンプ
+
+```scss
+@use "@example/styles" as styles;
+
+.button {
+  // "$size" や "$variant" にカーソルを合わせて F12 を押すと、
+  // mixin定義の引数宣言にジャンプします
+  @include styles.button-primary($size: large, $variant: outline);
+}
+```
+
+mixinの定義例:
+```scss
+// @example/styles/src/components/button.scss
+@mixin button-primary($size: medium, $variant: solid) {
+  padding: if($size == large, 1rem 2rem, 0.5rem 1rem);
+  background-color: if($variant == solid, #007bff, transparent);
 }
 ```
 
@@ -168,6 +190,16 @@ node_modules/@example/styles/
   // ...
 }
 ```
+
+#### mixin呼び出しの引数
+
+```scss
+@include styles.button-primary($size: large);
+@include btn.reset;  // 引数なし
+@include components.card($padding: 20px, $background: #fff);
+```
+
+名前付き引数部分（`$size`、`$padding`など）をクリックすると、mixin定義の引数宣言にジャンプします。
 
 ### 変数定義
 
