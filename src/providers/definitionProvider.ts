@@ -28,6 +28,15 @@ export class SassDefinitionProvider implements vscode.DefinitionProvider {
         `provideDefinition called at ${document.uri.fsPath}:${position.line}:${position.character}`,
       );
 
+      // Phase 3: 引数コンテキストをチェック
+      const includeContext = this.extractIncludeCallContext(document, position);
+      if (includeContext) {
+        logger.info(
+          `Resolving argument: ${includeContext.argumentName} in ${includeContext.namespace}.${includeContext.mixinName}`,
+        );
+        return await this.resolveArgumentDefinition(includeContext, document);
+      }
+
       // カーソル位置のトークンを取得
       const context = this.extractContext(document, position);
       if (!context) {
@@ -168,6 +177,98 @@ export class SassDefinitionProvider implements vscode.DefinitionProvider {
   }
 
   /**
+   * 引数定義を解決
+   */
+  private async resolveArgumentDefinition(
+    includeContext: {
+      namespace: string;
+      mixinName: string;
+      argumentName: string;
+    },
+    document: vscode.TextDocument,
+  ): Promise<vscode.Location | undefined> {
+    // ワークスペースルートを取得
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+    if (!workspaceFolder) {
+      logger.error("No workspace folder found");
+      return undefined;
+    }
+
+    const currentFilePath = document.uri.fsPath;
+    const workspaceRoot = workspaceFolder.uri.fsPath;
+
+    // 1. @use宣言を解決
+    const currentContent = await readFile(currentFilePath);
+    const useStatement = useResolver.findUseByNamespace(currentContent, includeContext.namespace);
+
+    if (!useStatement) {
+      logger.debug(`No @use statement found for namespace: ${includeContext.namespace}`);
+      return undefined;
+    }
+
+    // 2. モジュールファイルを解決
+    const moduleFilePath = await moduleResolver.resolveModule(
+      useStatement.path,
+      currentFilePath,
+      workspaceRoot,
+    );
+
+    if (!moduleFilePath) {
+      logger.debug(`Failed to resolve module: ${useStatement.path}`);
+      return undefined;
+    }
+
+    // 3. @forwardを解決してmixin定義を検索
+    const moduleContent = await readFile(moduleFilePath);
+    forwardResolver.clearVisitedFiles();
+
+    const forwardedResult = await forwardResolver.findForwardedMember(
+      moduleContent,
+      includeContext.mixinName,
+      moduleFilePath,
+      workspaceRoot,
+    );
+
+    const targetFilePath = forwardedResult?.filePath || moduleFilePath;
+    const targetMixinName = forwardedResult?.originalName || includeContext.mixinName;
+
+    // 4. mixin定義を取得（引数情報付き）
+    const targetContent = await readFile(targetFilePath);
+    const mixinDef = sassParser.findMixinDefinition(targetContent, targetMixinName, targetFilePath);
+
+    if (!mixinDef) {
+      logger.debug(`Mixin definition not found: ${targetMixinName}`);
+      return undefined;
+    }
+
+    if (!mixinDef.parameters || mixinDef.parameters.length === 0) {
+      logger.debug(`Mixin has no parameters: ${targetMixinName}`);
+      return undefined;
+    }
+
+    // 5. 引数名でマッチング
+    const targetParam = mixinDef.parameters.find((p) => p.name === includeContext.argumentName);
+
+    if (!targetParam) {
+      logger.debug(
+        `Parameter not found: ${includeContext.argumentName} (available: ${mixinDef.parameters.map((p) => p.name).join(", ")})`,
+      );
+      return undefined;
+    }
+
+    // 6. 引数の位置へジャンプ
+    const uri = vscode.Uri.file(targetFilePath);
+    const position = new vscode.Position(targetParam.line, targetParam.column);
+    const location = new vscode.Location(uri, position);
+
+    logger.info(
+      `Argument definition found: ${targetFilePath}:${targetParam.line}:${targetParam.column}`,
+    );
+
+    return location;
+  }
+
+  /**
    * カーソル位置からコンテキストを抽出
    */
   private extractContext(
@@ -261,5 +362,99 @@ export class SassDefinitionProvider implements vscode.DefinitionProvider {
       workspaceRoot: workspaceFolder.uri.fsPath,
       cursorTarget,
     };
+  }
+
+  /**
+   * @include呼び出しのコンテキストを抽出
+   * カーソルが引数部分にある場合、引数名を返す
+   */
+  private extractIncludeCallContext(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+  ):
+    | {
+        namespace: string;
+        mixinName: string;
+        argumentName: string;
+      }
+    | undefined {
+    const line = document.lineAt(position.line).text;
+    const cursorChar = position.character;
+
+    // 1. @include呼び出しを検出
+    const includePattern = /@include\s+([\w-]+)\.([\w-]+)\s*\(/g;
+    const matches = Array.from(line.matchAll(includePattern));
+
+    for (const match of matches) {
+      const matchStart = match.index ?? 0;
+      const namespace = match[1];
+      const mixinName = match[2];
+
+      // 2. 括弧の範囲を特定
+      const parenStart = line.indexOf("(", matchStart);
+      if (parenStart === -1) continue;
+
+      const parenEnd = this.findMatchingParen(line, parenStart);
+      if (parenEnd === -1) continue;
+
+      // 3. カーソルが括弧内にあるかチェック
+      if (cursorChar <= parenStart || cursorChar >= parenEnd) {
+        continue;
+      }
+
+      // 4. カーソル位置の引数名を特定
+      const argumentName = this.extractArgumentNameAtCursor(line, cursorChar, parenStart, parenEnd);
+
+      if (argumentName) {
+        return { namespace, mixinName, argumentName };
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * 対応する閉じ括弧の位置を検索
+   */
+  private findMatchingParen(line: string, startIndex: number): number {
+    let depth = 0;
+    for (let i = startIndex; i < line.length; i++) {
+      if (line[i] === "(") depth++;
+      if (line[i] === ")") {
+        depth--;
+        if (depth === 0) return i;
+      }
+    }
+    return -1;
+  }
+
+  /**
+   * カーソル位置の引数名を抽出
+   * 例: "$size: large" の$sizeにカーソル → "size" を返す
+   */
+  private extractArgumentNameAtCursor(
+    line: string,
+    cursorPos: number,
+    argsStart: number,
+    argsEnd: number,
+  ): string | null {
+    const argsString = line.substring(argsStart + 1, argsEnd);
+    const relativePos = cursorPos - argsStart - 1;
+
+    // 引数名のパターン: $name または $name: value
+    const paramPattern = /\$\s*([\w-]+)/g;
+    const matches = Array.from(argsString.matchAll(paramPattern));
+
+    for (const match of matches) {
+      const matchStart = match.index ?? 0;
+      const matchEnd = matchStart + match[0].length;
+
+      // カーソルが引数名の範囲内にあるかチェック
+      if (relativePos >= matchStart && relativePos <= matchEnd) {
+        return match[1]; // 引数名（$なし）
+      }
+    }
+
+    return null;
   }
 }

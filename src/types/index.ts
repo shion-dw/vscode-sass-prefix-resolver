@@ -25,6 +25,20 @@ export interface ForwardStatement {
 /**
  * mixin定義の情報
  */
+/**
+ * mixin引数の情報
+ */
+export interface MixinParameter {
+  /** 引数名（例: "size"、$記号なし） */
+  name: string;
+  /** デフォルト値（ある場合、例: "medium"） */
+  defaultValue: string | null;
+  /** 定義ファイル内での行番号（0-indexed） */
+  line: number;
+  /** 定義ファイル内での列番号（0-indexed、$記号の位置） */
+  column: number;
+}
+
 export interface MixinDefinition {
   /** mixin名 */
   name: string;
@@ -34,6 +48,8 @@ export interface MixinDefinition {
   line: number;
   /** 列番号（0-indexed） */
   column: number;
+  /** mixin引数のリスト（オプショナル） */
+  parameters?: MixinParameter[];
 }
 
 /**

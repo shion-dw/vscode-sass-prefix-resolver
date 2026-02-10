@@ -1,4 +1,4 @@
-import type { MixinDefinition, VariableDefinition } from "../types";
+import type { MixinDefinition, MixinParameter, VariableDefinition } from "../types";
 import { logger } from "../utils/logger";
 
 /**
@@ -50,8 +50,11 @@ export class SassParser {
           // @mixinの位置を取得
           const column = match.index || 0;
 
+          // 引数情報を解析
+          const parameters = this.parseMixinParameters(content, mixinName, lineNumber);
+
           logger.debug(
-            `Found mixin definition: ${mixinName} at ${filePath}:${lineNumber}:${column}`,
+            `Found mixin definition: ${mixinName} at ${filePath}:${lineNumber}:${column} with ${parameters?.length || 0} parameters`,
           );
 
           return {
@@ -59,6 +62,7 @@ export class SassParser {
             filePath,
             line: lineNumber,
             column,
+            parameters,
           };
         }
       }
@@ -66,6 +70,149 @@ export class SassParser {
 
     logger.debug(`Mixin "${mixinName}" not found in ${filePath}`);
     return undefined;
+  }
+
+  /**
+   * mixin定義の引数を解析
+   */
+  private parseMixinParameters(
+    content: string,
+    mixinName: string,
+    startLine: number,
+  ): MixinParameter[] | undefined {
+    const lines = content.split("\n");
+
+    // 1. 括弧内の引数文字列を抽出
+    const argsString = this.extractArgumentsString(lines, startLine);
+    if (!argsString || argsString.trim().length === 0) {
+      return []; // 引数なし
+    }
+
+    // 2. 引数をカンマで分割（括弧内のカンマは無視）
+    const argTokens = this.splitArguments(argsString);
+
+    // 3. 各引数を解析
+    const parameters: MixinParameter[] = [];
+    for (const token of argTokens) {
+      const param = this.parseParameter(token, lines, startLine);
+      if (param) {
+        parameters.push(param);
+      }
+    }
+
+    return parameters;
+  }
+
+  /**
+   * mixin定義の括弧内の引数文字列を抽出
+   */
+  private extractArgumentsString(lines: string[], startLine: number): string | null {
+    let argsString = "";
+    let depth = 0;
+    let foundStart = false;
+
+    for (let i = startLine; i < lines.length; i++) {
+      const line = lines[i];
+
+      for (let j = 0; j < line.length; j++) {
+        const char = line[j];
+
+        if (char === "(") {
+          foundStart = true;
+          depth++;
+          if (depth === 1) continue; // 最初の括弧はスキップ
+        }
+
+        if (foundStart && depth > 0) {
+          if (char === ")") {
+            depth--;
+            if (depth === 0) {
+              return argsString;
+            }
+          }
+          argsString += char;
+        }
+      }
+
+      if (foundStart && depth > 0) {
+        argsString += "\n"; // 複数行の場合
+      }
+    }
+
+    return null; // 閉じ括弧が見つからない
+  }
+
+  /**
+   * 引数文字列をカンマで分割（括弧内のカンマは無視）
+   */
+  private splitArguments(argsString: string): string[] {
+    const tokens: string[] = [];
+    let current = "";
+    let depth = 0;
+
+    for (const char of argsString) {
+      if (char === "(" || char === "{") {
+        depth++;
+      }
+      if (char === ")" || char === "}") {
+        depth--;
+      }
+
+      if (char === "," && depth === 0) {
+        tokens.push(current.trim());
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+
+    if (current.trim()) {
+      tokens.push(current.trim());
+    }
+
+    return tokens;
+  }
+
+  /**
+   * 個別の引数トークンを解析
+   */
+  private parseParameter(token: string, lines: string[], baseLine: number): MixinParameter | null {
+    // $name: default-value の形式をパース
+    const match = token.match(/\$\s*([\w-]+)(?:\s*:\s*(.+))?/);
+    if (!match) {
+      return null;
+    }
+
+    const name = match[1];
+    const defaultValue = match[2]?.trim() || null;
+
+    // 位置情報を計算
+    const { line, column } = this.calculateParameterPosition(name, lines, baseLine);
+
+    return { name, defaultValue, line, column };
+  }
+
+  /**
+   * 引数の位置を計算
+   */
+  private calculateParameterPosition(
+    paramName: string,
+    lines: string[],
+    startLine: number,
+  ): { line: number; column: number } {
+    // mixin定義の行から引数を探す
+    for (let i = startLine; i < Math.min(startLine + 10, lines.length); i++) {
+      const line = lines[i];
+      const pattern = new RegExp(`\\$\\s*${paramName}\\b`);
+      const match = line.match(pattern);
+
+      if (match && match.index !== undefined) {
+        return { line: i, column: match.index };
+      }
+    }
+
+    // 見つからない場合はmixin定義の行をデフォルトにする
+    return { line: startLine, column: 0 };
   }
 
   /**

@@ -1,0 +1,16 @@
+@use "@test-pkg/styles";
+
+.button-large {
+  // $size 引数にカーソルを合わせてF12
+  @include styles.button-primary($size: large, $variant: outline);
+}
+
+.button-small {
+  // $variant 引数にカーソルを合わせてF12
+  @include styles.button-primary($size: small, $variant: solid);
+}
+
+.button-secondary {
+  // $size 引数にカーソルを合わせてF12
+  @include styles.button-secondary($size: large);
+}
