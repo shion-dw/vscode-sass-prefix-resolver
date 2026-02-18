@@ -1,3 +1,11 @@
+# [1.2.0](https://github.com/shion-dw/vscode-sass-prefix-resolver/compare/v1.1.0...v1.2.0) (2026-02-18)
+
+
+### Features
+
+* **completion:** mixin・変数・引数のIntelliSense補完機能を追加 ([0db6807](https://github.com/shion-dw/vscode-sass-prefix-resolver/commit/0db6807af653dcfb37c96e9f8d0008c6360bea72))
+* **definition:** mixin引数へのコードジャンプ機能を追加 ([77b1640](https://github.com/shion-dw/vscode-sass-prefix-resolver/commit/77b16409046f30394068ee81aba6f1221538e8ad))
+
 # [1.1.0](https://github.com/shion-dw/vscode-sass-prefix-resolver/compare/v1.0.0...v1.1.0) (2026-02-06)
 
 
