@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { SassCompletionProvider } from "./providers/completionProvider";
 import { SassDefinitionProvider } from "./providers/definitionProvider";
 import { cacheManager } from "./utils/cache";
 import { logger } from "./utils/logger";
@@ -17,6 +18,21 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   logger.info("Definition provider registered for SCSS and Sass files");
+
+  // CompletionProviderの登録
+  const completionProvider = new SassCompletionProvider();
+
+  context.subscriptions.push(
+    vscode.languages.registerCompletionItemProvider(
+      ["scss", "sass"],
+      completionProvider,
+      ".", // namespace.█ のトリガー
+      "$", // $█ のトリガー
+      "(", // mixin(█ のトリガー
+    ),
+  );
+
+  logger.info("Completion provider registered for SCSS and Sass files");
 }
 
 export function deactivate() {

@@ -64,6 +64,8 @@ export interface VariableDefinition {
   line: number;
   /** 列番号（0-indexed） */
   column: number;
+  /** 変数の値（補完表示用、オプショナル） */
+  value?: string;
 }
 
 /**

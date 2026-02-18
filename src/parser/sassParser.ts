@@ -305,6 +305,109 @@ export class SassParser {
   }
 
   /**
+   * ファイル内の全てのmixin定義を引数情報付きで列挙
+   *
+   * @param content - ファイル内容
+   * @param filePath - ファイルパス
+   * @returns MixinDefinition[]（parameters付き）
+   */
+  findAllMixinDefinitionsWithParams(content: string, filePath: string): MixinDefinition[] {
+    const definitions: MixinDefinition[] = [];
+    const lines = content.split("\n");
+
+    for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
+      const line = lines[lineNumber];
+
+      // コメント行はスキップ
+      const trimmedLine = line.trim();
+      if (trimmedLine.startsWith("//")) {
+        continue;
+      }
+
+      // mixin定義を検索
+      const matches = Array.from(line.matchAll(this.MIXIN_PATTERN));
+      for (const match of matches) {
+        const mixinName = match[1];
+        const column = match.index || 0;
+
+        // 引数情報を解析
+        const parameters = this.parseMixinParameters(content, mixinName, lineNumber);
+
+        definitions.push({
+          name: mixinName,
+          filePath,
+          line: lineNumber,
+          column,
+          parameters,
+        });
+      }
+    }
+
+    return definitions;
+  }
+
+  /**
+   * ファイル内の全ての変数定義を列挙
+   *
+   * @param content - ファイル内容
+   * @param filePath - ファイルパス
+   * @returns VariableDefinition[]（value付き）
+   */
+  findAllVariableDefinitions(content: string, filePath: string): VariableDefinition[] {
+    const definitions: VariableDefinition[] = [];
+    const lines = content.split("\n");
+    let inBlockComment = false;
+
+    for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
+      const line = lines[lineNumber];
+
+      // ブロックコメントの追跡
+      if (line.includes("/*")) {
+        inBlockComment = true;
+      }
+      if (line.includes("*/")) {
+        inBlockComment = false;
+        continue;
+      }
+      if (inBlockComment) {
+        continue;
+      }
+
+      // コメント行はスキップ
+      const trimmedLine = line.trim();
+      if (trimmedLine.startsWith("//")) {
+        continue;
+      }
+
+      // 変数定義を検索
+      const matches = Array.from(line.matchAll(this.VARIABLE_PATTERN));
+      for (const match of matches) {
+        const fullMatch = match[0];
+        const varName = fullMatch.replace(/\s*:$/, "");
+        const column = match.index || 0;
+
+        // 値を抽出（: の後から ; または行末まで）
+        const afterColon = line.substring(column + fullMatch.length);
+        const semicolonIndex = afterColon.indexOf(";");
+        const value =
+          semicolonIndex !== -1
+            ? afterColon.substring(0, semicolonIndex).trim()
+            : afterColon.trim();
+
+        definitions.push({
+          name: varName,
+          filePath,
+          line: lineNumber,
+          column,
+          value: value || undefined,
+        });
+      }
+    }
+
+    return definitions;
+  }
+
+  /**
    * ブロックコメント内かどうかを判定（将来の改善用）
    */
   private isInBlockComment(content: string, position: number): boolean {

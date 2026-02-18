@@ -1,6 +1,6 @@
 # vscode-sass-prefix-resolver
 
-VSCode拡張機能で、Sass/SCSSの@forward prefix付き転送を解決し、正確な定義へのジャンプを提供します。既存のSass拡張機能が対応していないprefix変換に特化した補完ツールです。
+VSCode拡張機能で、Sass/SCSSの@forward prefix付き転送を解決し、正確な定義へのジャンプとIntelliSense補完を提供します。既存のSass拡張機能が対応していないprefix変換に特化した補完ツールです。
 
 ## なぜこの拡張機能が必要か
 
@@ -13,6 +13,8 @@ VSCode拡張機能で、Sass/SCSSの@forward prefix付き転送を解決し、�
 
 ## 特徴
 
+### 定義へのジャンプ
+
 - `@use` で読み込んだモジュールのmixin定義へのジャンプ
 - `@use` で読み込んだモジュールの変数定義へのジャンプ
 - ミックスイン呼び出し時の引数から、定義の引数宣言へのジャンプ
@@ -20,6 +22,17 @@ VSCode拡張機能で、Sass/SCSSの@forward prefix付き転送を解決し、�
 - node_modules 内のパッケージに対応
 - 再帰的な `@forward` 転送に対応
 - namespace部分のクリックでモジュールファイルへジャンプ
+
+### IntelliSense補完
+
+- `namespace.` 入力時にmixin・変数の候補を自動表示
+- コンテキストに応じた補完の出し分け
+  - `@include` の後 → mixin候補のみ
+  - プロパティ値の位置（`:` の後） → 変数候補のみ
+  - 上記以外 → mixin・変数の両方
+- `namespace.$` 入力時に変数候補を表示
+- `$` 入力時にスコープ内の変数を補完（ローカル変数 + `@use` モジュールの変数）
+- mixin引数の補完（`@include mixin(` の後に未入力の引数を候補表示）
 
 ## インストール
 
@@ -66,11 +79,22 @@ yarn package
 
 ## 使い方
 
+### 定義へのジャンプ
+
 1. Sass/SCSSファイルで、mixin呼び出しや変数参照の部分（例: `styles.list-reset`, `styles.$color-primary`）にカーソルを合わせる
 2. F12キー（または右クリック→「定義に移動」）を押す
 3. 定義の場所にジャンプします
 
 **ヒント:** namespace部分（例: `styles.$color`の`styles`）にカーソルを合わせてF12を押すと、モジュールファイル自体にジャンプできます。
+
+### IntelliSense補完
+
+`@use` で読み込んだモジュールのnamespace名に続けて `.` を入力すると、利用可能なmixinや変数の補完候補が自動的に表示されます。
+
+- **mixin補完**: `@include styles.` と入力 → mixin候補がリストアップ
+- **変数補完**: `color: styles.` と入力 → 変数候補がリストアップ
+- **引数補完**: `@include styles.button-primary(` と入力 → 未入力の引数が候補表示
+- **スコープ変数補完**: `$` を入力 → ローカル変数と`@use`モジュールの変数が候補表示
 
 ## 例
 
@@ -115,6 +139,71 @@ mixinの定義例:
   // "$color-primary" にカーソルを合わせて F12 を押す
   color: styles.$color-primary;
   border: 1px solid styles.$color-mono6;
+}
+```
+
+### IntelliSense補完
+
+#### mixin補完
+
+```scss
+@use "@example/styles" as styles;
+
+.container {
+  @include styles.  // ← "." の後にmixin候補が表示される
+  // 候補: list-reset, button-primary, ...
+}
+```
+
+#### 変数補完
+
+```scss
+@use "@example/styles" as styles;
+
+.container {
+  color: styles.  // ← "." の後に変数候補が表示される
+  // 候補: $color-primary, $color-mono6, ...
+}
+```
+
+#### コンテキストに応じた候補の出し分け
+
+```scss
+@use "@example/styles" as styles;
+
+// @include の後 → mixin候補のみ
+@include styles.  // → list-reset, button-primary, ...
+
+// プロパティ値の位置 → 変数候補のみ
+color: styles.  // → $color-primary, $color-mono6, ...
+
+// 行頭など → mixin + 変数の両方
+styles.  // → list-reset, button-primary, $color-primary, ...
+```
+
+#### mixin引数補完
+
+```scss
+@use "@example/styles" as styles;
+
+.button {
+  @include styles.button-primary(  // ← "(" の後に引数候補が表示される
+  // 候補: $size, $variant
+  // 既に入力済みの引数は候補から除外される
+  @include styles.button-primary($size: large,   // ← $variant のみ候補に表示
+}
+```
+
+#### スコープ内変数補完
+
+```scss
+@use "@example/styles" as styles;
+
+$local-color: red;
+
+.container {
+  color: $  // ← "$" の後にスコープ内の変数候補が表示される
+  // 候補: $local-color, styles.$color-primary, styles.$color-mono6, ...
 }
 ```
 

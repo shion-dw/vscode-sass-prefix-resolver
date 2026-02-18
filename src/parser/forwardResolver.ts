@@ -1,7 +1,8 @@
-import type { ForwardStatement } from "../types";
+import type { ForwardStatement, MixinDefinition, VariableDefinition } from "../types";
 import { readFile } from "../utils/fileSystem";
 import { logger } from "../utils/logger";
 import { moduleResolver } from "./moduleResolver";
+import { sassParser } from "./sassParser";
 
 /**
  * @forward宣言を解析するクラス
@@ -141,6 +142,110 @@ export class ForwardResolver {
     } finally {
       // 訪問済みファイルから削除(別の経路での再訪を許可)
       this.visitedFiles.delete(currentFilePath);
+    }
+  }
+
+  /**
+   * 全@forward転送メンバーを列挙
+   *
+   * @param content - 検索対象のファイル内容
+   * @param currentFilePath - 現在のファイルパス
+   * @param workspaceRoot - ワークスペースルート
+   * @param type - 取得するメンバーの種類
+   * @returns MixinDefinition[] | VariableDefinition[]
+   */
+  async findAllForwardedMembers(
+    content: string,
+    currentFilePath: string,
+    workspaceRoot: string,
+    type: "mixin" | "variable",
+    visitedFiles: Set<string> = new Set(),
+  ): Promise<Array<MixinDefinition | VariableDefinition>> {
+    // 循環参照チェック
+    if (visitedFiles.has(currentFilePath)) {
+      logger.debug(`Circular reference detected in findAllForwardedMembers: ${currentFilePath}`);
+      return [];
+    }
+
+    visitedFiles.add(currentFilePath);
+
+    const results: Array<MixinDefinition | VariableDefinition> = [];
+
+    try {
+      const statements = this.parseForwardStatements(content);
+
+      for (const statement of statements) {
+        // モジュールパスを解決
+        const resolvedPath = await moduleResolver.resolveModule(
+          statement.path,
+          currentFilePath,
+          workspaceRoot,
+        );
+
+        if (!resolvedPath) {
+          logger.debug(`Failed to resolve forward path: ${statement.path}`);
+          continue;
+        }
+
+        const forwardedContent = await readFile(resolvedPath);
+
+        // 直接定義を取得
+        let members: Array<MixinDefinition | VariableDefinition>;
+        if (type === "mixin") {
+          members = sassParser.findAllMixinDefinitionsWithParams(forwardedContent, resolvedPath);
+        } else {
+          members = sassParser.findAllVariableDefinitions(forwardedContent, resolvedPath);
+        }
+
+        // プライベートメンバーを除外し、プレフィックス変換を適用
+        for (const member of members) {
+          const isVariable = member.name.startsWith("$");
+          const nameWithoutDollar = isVariable ? member.name.substring(1) : member.name;
+
+          // _始まりのプライベートメンバーを除外
+          if (nameWithoutDollar.startsWith("_")) {
+            continue;
+          }
+
+          // プレフィックス変換
+          if (statement.prefix) {
+            if (isVariable) {
+              member.name = `$${statement.prefix}${nameWithoutDollar}`;
+            } else {
+              member.name = `${statement.prefix}${member.name}`;
+            }
+          }
+
+          results.push(member);
+        }
+
+        // 再帰的にネストした@forwardも処理
+        const nestedMembers = await this.findAllForwardedMembers(
+          forwardedContent,
+          resolvedPath,
+          workspaceRoot,
+          type,
+          visitedFiles,
+        );
+
+        // ネストしたメンバーにもプレフィックスを適用
+        for (const member of nestedMembers) {
+          if (statement.prefix) {
+            const isVariable = member.name.startsWith("$");
+            const nameWithoutDollar = isVariable ? member.name.substring(1) : member.name;
+            if (isVariable) {
+              member.name = `$${statement.prefix}${nameWithoutDollar}`;
+            } else {
+              member.name = `${statement.prefix}${member.name}`;
+            }
+          }
+          results.push(member);
+        }
+      }
+
+      return results;
+    } finally {
+      visitedFiles.delete(currentFilePath);
     }
   }
 
